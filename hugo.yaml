@@ -1,0 +1,120 @@
+languageCode: en-us
+baseURL: https://0xrusowsky.eth/
+title: 0xrusowsky
+theme: PaperMod
+
+enableRobotsTXT: true
+buildDrafts: false
+buildFuture: false
+buildExpired: false
+
+minify:
+  disableXML: true
+  minifyOutput: true
+
+params:
+  env: production
+  title: 0xrusowsky
+  description: "Aspiring crypto developer"
+  keywords: [Blockchain, Ethereum, Article, Blog, Computer Science, Rust]
+  author: 0xrusowsky
+  DateFormat: "January 2, 2006"
+  defaultTheme: auto # dark, light
+  disableThemeToggle: false
+
+  ShowReadingTime: true
+  ShowShareButtons: false
+  ShowPostNavLinks: true
+  ShowBreadCrumbs: false
+  ShowCodeCopyButtons: true
+  disableSpecial1stPost: false
+  disableScrollToTop: false
+  comments: false
+  hidemeta: false
+  hideSummary: false
+  showtoc: false
+  tocopen: false
+
+  label:
+    text: "0xrusowsky"
+    icon: "images/rus.jpg"
+    iconHeight: 35
+
+  # profile-mode
+  profileMode:
+    enabled: true # needs to be explicitly set
+    title: "Hey there! \U0001FAE1"
+    subtitle: "I'm 0xrusowsky, an aspiring crypto developer.\n
+
+     \n
+
+    My main interests are in the field of blockchain technology and distributed systems.
+    Captivated by Ethereum and its grand vision for decentralization.
+    I'm deeply invested in exploring DeFi and the challenges presented by computer science, where I constantly seek new challenges and learning opportunities.\n
+
+     \n
+
+    Join me on this journey as we explore the vast, untapped potential of blockchain and make our mark, one block at a time."
+    imageUrl: "images/rus.jpg"
+    imageWidth: 120
+    imageHeight: 120
+    imageTitle: "Rus"
+    buttons:
+      - name: Articles
+        url: articles
+
+  # home-info mode
+  homeInfoParams:
+    Title: "Welcome! \U0001F44B"
+    Content: "I'm 0xrusowsky, an aspiring crypto developer.\n\n
+
+    My main interests are in the field of blockchain technology and distributed systems.
+    Captivated by Ethereum and its grand vision for decentralization.
+    I'm deeply invested in exploring DeFi and the challenges presented by computer science, where I constantly seek new challenges and learning opportunities.\n\n
+
+    What's my endgame?\n\n
+
+    Simple: to grow as a developer who makes a positive impact in the community.
+    Join me on this journey as we explore the vast, untapped potential of blockchain and make our mark, one block at a time."
+
+  socialIcons:
+    - name: twitter
+      url: "https://twitter.com/0xrusowsky"
+    - name: farcaster
+      url: "https://warpcast.com/0xrusowsky.eth"
+    - name: github
+      url: "https://github.com/0xrusowsky"
+    - name: substack
+      url: "https://journal0xrusowsky.substack.com/"
+
+  cover:
+    hidden: true # hide everywhere but not in structured data
+    hiddenInList: true # hide on list pages and home
+    hiddenInSingle: false # hide on single page
+
+
+  editPost:
+    URL: ""
+    Text: "" # edit text
+    appendFilePath: true # to append file path to Edit link
+
+  # for search
+  # https://fusejs.io/api/options.html
+  fuseOpts:
+    isCaseSensitive: false
+    shouldSort: true
+    location: 0
+    distance: 1000
+    threshold: 0.4
+    minMatchCharLength: 0
+    keys: ["title", "permalink", "summary", "content"]
+menu:
+  main:
+    - identifier: about
+      name: About
+      url: /
+      weight: 4
+    - identifier: article
+      name: Articles
+      url: /articles/
+      weight: 1
