@@ -6,7 +6,7 @@ category: article
 summary: Why are we here in the first place?
 description: Brief history and reflections around the origin of the ethos of the blockchain space.
 cover:
-  image: /covers/anarchy.png
+  image: covers/anarchy.png
   alt:
   caption: 
   relative: true
