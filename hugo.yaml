@@ -15,7 +15,7 @@ minify:
 params:
   env: production
   title: 0xrusowsky
-  description: "Aspiring crypto developer"
+  description: "Aspiring crypto dev"
   keywords: [Blockchain, Ethereum, Article, Blog, Computer Science, Rust]
   author: 0xrusowsky
   DateFormat: "January 2, 2006"
