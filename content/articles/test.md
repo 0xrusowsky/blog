@@ -1,6 +1,6 @@
 ---
 title: "Test"
-date: 2022-07-08T21:33:00+00:00
+date: 2023-07-08T21:33:00+00:00
 slug: test
 category: article 
 summary: This is a draft
@@ -9,7 +9,7 @@ cover:
   image: 
   alt:
   caption: 
-  relative: true
+  relative:
 showtoc: true
 draft: true
 ---
