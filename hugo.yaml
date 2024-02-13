@@ -44,7 +44,7 @@ params:
   profileMode:
     enabled: true # needs to be explicitly set
     title: "Hey there! \U0001FAE1"
-    subtitle: "I'm 0xrusowsky, an aspiring crypto developer.\n
+    subtitle: "I'm **rusowsky**, an aspiring crypto developer.\n
 
      \n
 

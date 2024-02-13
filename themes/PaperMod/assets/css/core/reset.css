@@ -20,7 +20,7 @@ h3,
 h4,
 h5,
 h6 {
-    color: var(--primary);
+    color: var(--primary-bold);
 }
 
 body {
@@ -114,5 +114,5 @@ textarea:-webkit-autofill {
 
 img {
     display: block;
-    max-width: 100%;
+    max-width: 125%;
 }

@@ -20,7 +20,9 @@
 .dark {
     --theme: rgb(29, 30, 32);
     --entry: rgb(46, 46, 51);
+    --link: rgb(115, 218, 202);
     --primary: rgb(218, 218, 219);
+    --primary-bold: rgb(233, 233, 233);
     --secondary: rgb(155, 156, 157);
     --tertiary: rgb(65, 66, 68);
     --content: rgb(196, 196, 197);
