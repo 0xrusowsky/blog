@@ -49,12 +49,12 @@ params:
      \n
 
     My main interests are in the field of blockchain technology and distributed systems.
-    Captivated by Ethereum and its grand vision for decentralization economies and human coordination systems.
+    Captivated by Ethereum and its grand vision for decentralized economies and human coordination.
     I'm deeply invested in exploring DeFi and the challenges presented by computer science, where I constantly seek growth and learning opportunities.\n
 
      \n
 
-    Join me on this journey as we explore the vast, untapped potential of blockchain and try to make a positive impact, one block at a time."
+    Join me on this journey as we explore the vast, untapped potential of blockchain and try to make a positive impact."
     imageUrl: "images/rus.jpg"
     imageWidth: 120
     imageHeight: 120
@@ -65,17 +65,18 @@ params:
 
   # home-info mode
   homeInfoParams:
-    Title: "Welcome! \U0001F44B"
-    Content: "I'm 0xrusowsky, an aspiring crypto developer.\n\n
+    Title: "Hey there! \U0001FAE1"
+    Content: "I'm **rusowsky**, an aspiring crypto developer.\n
+
+     \n
 
     My main interests are in the field of blockchain technology and distributed systems.
-    Captivated by Ethereum and its grand vision for decentralization.
-    I'm deeply invested in exploring DeFi and the challenges presented by computer science, where I constantly seek new challenges and learning opportunities.\n\n
+    Captivated by Ethereum and its grand vision for decentralized economies and human coordination.
+    I'm deeply invested in exploring DeFi and the challenges presented by computer science, where I constantly seek growth and learning opportunities.\n
 
-    What's my endgame?\n\n
+     \n
 
-    Simple: to grow as a developer who makes a positive impact in the community.
-    Join me on this journey as we explore the vast, untapped potential of blockchain and make our mark, one block at a time."
+    Join me on this journey as we explore the vast, untapped potential of blockchain and try to make a positive impact."
 
   socialIcons:
     - name: twitter
