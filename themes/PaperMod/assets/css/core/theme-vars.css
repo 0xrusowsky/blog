@@ -6,9 +6,11 @@
     --header-height: 60px;
     --footer-height: 60px;
     --radius: 8px;
-    --theme: rgb(255, 255, 255);
+    --theme: rgb(253, 253, 253);
     --entry: rgb(255, 255, 255);
+    --link: rgb(18, 147, 128);
     --primary: rgb(30, 30, 30);
+    --primary-bold: rgb(18, 18, 18);
     --secondary: rgb(108, 108, 108);
     --tertiary: rgb(214, 214, 214);
     --content: rgb(31, 31, 31);
