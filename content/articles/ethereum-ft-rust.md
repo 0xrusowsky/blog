@@ -1,5 +1,5 @@
 ---
-title: "Rust Ethereum"
+title: "Ethereum, but made in Rust"
 date: 2024-02-12T19:54:00+00:00
 slug: ethereum-ft-rust
 category: article 
