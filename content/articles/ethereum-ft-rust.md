@@ -22,7 +22,7 @@ So, I decided to implement the [EVM from scratch, in Rust](https://github.com/0x
 
 I figured that most developers who were new to Rust might face a similar challenge. Therefore, I teased on Farcaster about the possibility of creating a written series to explore how Rust intersects with Ethereum projects. The reception from the community was both surprising and motivating. It became evident that there's a collective eagerness to breach the gap between "not-so-idiomatic docs" and rust learnoors that want to discover how Rust can be leveraged in the Ethereum ecosystem. Inspired by this, I've decided to embark on a series that focuses on this exciting intersection.
 
-## Series Focus: Upskill by learning from the best
+### Upskill by learning from the best
 
 The core mission of this series is to deeply understand how seasoned Rust developers tackle the unique challenges of blockchain technology. This isn't just about diving into code; it's about understanding the technical topics behind the implementations, so that we can then comprehend the design and implementation choices that were made by those who've mastered the art of Rust in blockchain. Through this exploration, I aim to bridge theoretical knowledge with practical application, learning firsthand from the work of experienced devs.
 
@@ -34,4 +34,4 @@ Stay tuned for the first chapter of the series, kicking off our exploration of t
 
 ---
 
-🔔   _I will be sharing the articles on both [Farcaster](https://warpcast.com/0xrusowsky.eth) and [Tiwtter](https://twitter.com/0xrusowsky), so make sure to follow me if you are interested!_
+🔔   _I will be sharing the articles on both [Farcaster](https://warpcast.com/0xrusowsky.eth) and [Twitter](https://twitter.com/0xrusowsky), so make sure to follow me if you are interested!_
