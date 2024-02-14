@@ -1,12 +1,12 @@
 ---
 title: "Ethereum, but made in Rust"
 date: 2024-02-12T19:54:00+00:00
-slug: ethereum-ft-rust
+slug: ethereum-made-in-rust
 category: article 
-summary: Introduction to the Ethereum ft. Rust series
+summary: Introduction to a new series that explores blockchain-related projects built with Rust.
 description:
 cover:
-  image: covers/reth.png
+  image: covers/eth-in-rust.png
   alt:
   caption: 
   relative:
