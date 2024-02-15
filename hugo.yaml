@@ -12,6 +12,12 @@ minify:
   disableXML: true
   minifyOutput: true
 
+markup:
+  highlight:
+    codeFences: true
+    noClasses: true
+    style: catppuccin-mocha
+
 params:
   env: production
   title: 0xrusowsky

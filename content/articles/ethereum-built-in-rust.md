@@ -26,11 +26,22 @@ I figured that most developers who were new to rust might face a similar challen
 
 The idea is simple: to **upskill by learning from the best**. The core mission of this series is to deeply understand how seasoned rust developers tackle the unique challenges of blockchain technology. This isn't just about diving into code; it's about understanding the technical topics behind the implementations, so that we can then comprehend the design and implementation choices that were made by those who've mastered the art of rust in blockchain. Through this exploration, I aim to bridge theoretical knowledge with practical application, learning firsthand from the work of experienced devs.
 
----
+
+## Let's switch gears. The Client Diversity Problem.
+
+As it stands, [Go-Ethereum (Geth)](https://github.com/ethereum/go-ethereum) dominates the execution layer, [commanding a 72% share](https://clientdiversity.org/#distribution). While Geth's pivotal role in Ethereum's infrastructure is undeniable, its predominance carries inherent risks. If there were to be zero-day client bug, the network would be severely impacted.
+
+{{< figure src="/blog/images/revm/client-diversity.png" align=center caption="_Client distribution landscape of the Ethereum network._" width=110% >}}
+
+This situation highlights the importance of diversifying the execution client ecosystem. Encouraging the adoption of minority clients by major validators (such as Lido or Coinbase) is gaining traction in the community as a means to mitigate these risks. These alternative clients not only contribute to the ecosystem’s resilience by reducing dependency on a single point of failure, but also do so by encouraging technological innovation. For instance, the innovations brought by `Reth` and `Erigon`, with its [stage-sync](https://erigon.substack.com/p/erigon-stage-sync-and-control-flows) feature, or `Reth`'s modularity, demonstrate the potential for new clients to enhance Ethereum's capabilities.
+
+[Rust-Ethereum (Reth)](https://github.com/paradigmxyz/reth/tree/main) emerges as pivotal development in broadening Ethereum's client diversity. It is no secret that [Paradigm](https://www.paradigm.xyz/oss) has been doubling-down on rust during the last couple of years, sponsoring opens-source projects such as: [ethers-rs](https://github.com/gakonst/ethers-rs), [foundy](https://github.com/foundry-rs/foundry), [revm](https://github.com/bluealloy/revm), [alloy](https://github.com/alloy-rs/alloy), and [reth](https://github.com/paradigmxyz/reth/tree/main). Their bet is clear, to build blazing-fast ethereum software leveraging rust's memory safety, and concurrent processing.
+
+As a foundry maxi and long-time enjoyoor, I am certain that the rust client will succeed. I believe that the client diversity picture will be way more different in a year. Because of that, I want to improve as a developer and eventually be able to contribute to this ecosystem of projects. While `reth` is on my radar for future exploration, I've chosen to start with a focused look at one of its core crates. As hinted earlier, we will deep-dive into `revm: a Rust implementation of the EVM`. In the articles to follow, we will examine `revm`'s compliance with the Ethereum Yellow Paper and the design decisions that experienced rust developers made.
 
 ## Join the Exploration!
 
-This series is an invitation to join me on this educational journey, where we aim to enhance our rust skills and apply them to the ever-evolving world of Ethereum.
+This series is an invitation to join me on this educational journey, where we aim to enhance our rust skills and apply them to the ever-evolving world of Ethereum. Let's discover how rust’s type system can be leveraged to build modular, efficient, and flexible software.
 
 Stay tuned for the first chapter of the series, kicking off our exploration of the Ethereum Virtual Machine (EVM) written in rust. This series is about collective growth, sharing discoveries, and navigating the exciting challenges of integrating rust with blockchain technology.
 
