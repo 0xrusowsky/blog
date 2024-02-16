@@ -1,17 +1,17 @@
 ---
 title: "Ethereum Virtual Machine (in Rust) - Part 1"
-date: 2024-02-12T19:54:00+00:00
-slug: ethereum-virtual-machine-pt1
+date: 2024-02-15T19:54:00+00:00
+slug: revm-pt1
 category: article 
-summary: Introduction to the EVM in Rust series
-description: First chapter of the Ethereum ft. Rust series, were I explore the implementation of the EVM.
+summary: Introduction to the EVM and its Rust implementation.
+description: "First chapter of the Ethereum, but made in Rust series. In this first episode, I explore revm: a rust implementation of the Ethereum Virtual Machine."
 cover:
   image:
   alt:
   caption: 
   relative:
-showtoc: true
-draft: true
+showtoc: false
+draft: false
 ---
 
 # What are Virtual Machines?
@@ -26,11 +26,11 @@ The execution process within a VM follows a simple yet powerful loop, with a pro
 3. **Jump**: If the instruction involves a jump, update the PC to point to the target instruction within the bytecode.
 4. **Increment**: Otherwise, simply advance the PC to the next opcode. _Note that some opcodes may require inputs, and that the PC can increment by more than 1 at a time._
 
-For instance, let's disassemble `0x600f8060093d393df36000356020350160005260206000f3` into bytes. We will assume that the opcode `0x60` consumes 1 byte, and that there are no jump instructions within this bytecode.
+For instance, let's disassemble `0x6000356020350160005260206000f3` into bytes. We will assume that the opcode `0x60` consumes 1 byte, and that there are no jump instructions within this bytecode.
 
 ```md
-Bytecode: 60 0f 80 60 09 3d 39 3d f3 60 00 35 60 20 35 01 60 00 52 60 20 60 00 f3
-      PC: 1  1  3  4  4  6  7  8  9  10 10 12 13 13 15 16 17 17 19 20 20 22 22 24
+Bytecode: 60 00 35 60 20 35 01 60 00 52 60 20 60 00 f3
+      PC: 0  0  2  3  3  5  6  7  7  9  10 10 12 12 14
 ```
 
 This structured process ensures that, irrespective of the underlying hardware or any asynchronies, VMs produce consistent outcomes when executing the same bytecode, provided that the execution environment remains unchanged.
@@ -49,9 +49,9 @@ Its design allows for the execution of smart contracts across distinct computing
 
 The following section aims to explain the theory behind each of its components, as well as showcasing the essence of their `revm` implementation. Because of that, some of the provided snippets may differ from the original code, aiming to illustrate the foundational building blocks a developer would create when coding the EVM from scratch. As we delve into the intricacies of the yellow paper, we will refine these blocks to match the real `revm` implementation.
 
-The EVM is a stack-based machine that operates with a 1024-item-deep stack, where each item is a 256-bit word. It follows a [big endian](https://developer.mozilla.org/en-US/docs/Glossary/Endianness) byte ordering convention.
-
 {{< figure src="/blog/images/revm/architecture.png" align=center caption="_EVM architecture and brief overview of its components._" >}}
+
+The EVM is a stack-based machine that operates with a 1024-item-deep stack, where each item is a 256-bit word. It follows a [big endian](https://developer.mozilla.org/en-US/docs/Glossary/Endianness) byte ordering convention.
 
 ### Byte Primitive Types
 
@@ -161,7 +161,11 @@ impl Memory {
             memory_limit: u64::MAX,
         }
     }
-
+}
+```
+Since memory is a word-addressable byte array, its getter and setter methods will require an `offset` and a `size`. Note that when setting a value, its size can be derived from its length.
+```rs
+impl Memory {
     /// Returns a byte slice of the memory region at the given offset.
     /// Panics on out of bounds.
     pub fn slice(&self, offset: usize, size: usize) -> &[u8] {
@@ -196,14 +200,7 @@ The EVM also has a **non-volatile storage** model where each account (contract) 
 /// An account's Storage is a mapping of 256-bit integer key-value pairs.
 pub type Storage = HashMap<U256, U256>;
 ```
-_*Note that `Hashmap` is a type defined in the standard collection. As such, among other convenient methods, it already has getter and setter functions. If you are not familiar with hashmaps yet, check the [standard library docs](https://doc.rust-lang.org/std/collections/struct.HashMap.html)._
-
-As per [EIP-1153](https://eips.ethereum.org/EIPS/eip-1153), after the Cancun hard fork, the EVM will also implement **transient storage**. A new type of data storage mechanism that identical to the regular storage, but which is **discarded after every transaction** (only persists within a transaction). Its main application being cheaper reentrancy locks.
-
-```rs
-/// Structure used for EIP-1153 transient storage.
-pub type TransientStorage = HashMap<(Address, U256), U256>;
-```
+_*Note that `Hashmap` is a type defined in the standard library. As such, among other convenient methods, it already has getter and setter functions. If you are not familiar with hashmaps yet, [check its docs](https://doc.rust-lang.org/std/collections/struct.HashMap.html)._
 
 ### World State
 
@@ -350,17 +347,51 @@ impl<T: DatabaseRef> Database for WrapDatabaseRef<T> {
 }
 ```
 
+
+### Transient Storage
+
+As per [EIP-1153](https://eips.ethereum.org/EIPS/eip-1153), after the Cancun hard fork, the EVM will also implement **transient storage**. A new type of data storage mechanism that is identical to regular storage, but which is **discarded after every transaction** (only persists within a transaction). Its main application being cheaper reentrancy locks.
+
+This difference between the two, means that the `TransientStorage` definition can be simplified. Rather than relying on a nested hashmap `State > Account [Storage] > Slot`, the key of the `TransientStorage` hashmap is a tuple composed by the account address, and the storage slot.
+
+```rs
+/// Structure used for EIP-1153 transient storage.
+pub type TransientStorage = HashMap<(Address, U256), U256>;
+```
+
 ### Gas
 
 As for computation costs, the EVM employs a mechanism pricing mechanism called gas. In order to execute a transaction, users must pay a gas fee to compensate for the computaional resources that they spend. By doing so, we can ensure that the network is not vulnerable to spam and cannot get stuck in infinite computational loops. The gas associated with each operation is different, and must be paid regardless of the outcome of the transaction, even if it reverts.
 
-With the introduction of [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) after the London hard fork, the fees paid by users are split between a base fee and a priority fee. This change lowered the volatility in gas prices, and gave user better predictibility.
+Apart from the computation costs, extra gas is charged in order to form the payment for a subordinate message call or contract creation (payment is embeded in the `CREATE`, `CREATE2`, `CALL` and `CALLCODE` opcodes).
+
+On top of that, extra gas is also charged when expanding the memory. Since memory is word-addressable, its expansion happens in 32 byte bounds. Note that expansion will happend regardless of the nature of the memory operation (either read or write).
+
+Finally, to help address the state growth problem, gas refunds are given when storage slots are cleared.
+
+```rs
+/// Represents the state of gas during execution.
+pub struct Gas {
+    /// The initial gas limit.
+    limit: u64,
+    /// The total used gas.
+    all_used_gas: u64,
+    /// Used gas without memory expansion.
+    used: u64,
+    /// Used gas for memory expansion.
+    memory: u64,
+    /// Refunded gas. This is used only at the end of execution.
+    refunded: i64,
+}
+```
+
+With the introduction of [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) after the London hard fork, the fees paid by users are split between a base fee -common for all the txs in a block- and a user-defined priority fee. This change lowered the volatility in gas prices, and gave user better predictibility.
 
 To learn more about gas fees (structure, limits, pricing, etc.) check the following [article](https://ethereum.org/developers/docs/gas).
 
 ### Execution Environment
 
-Environmental data necessary for the execution of the state transition. Mainly regarding the executing block, and transaction.
+Environmental data necessary for the execution of the state transition. This section is quite self-explanatory thanks to the verbose (great) comments, and shouldn't be new to people who are already familiar with the Ethereum network.
 
 ```rs
 /// EVM environment configuration.
@@ -411,7 +442,7 @@ pub struct TxEnv {
     pub data: Bytes,
     /// The nonce of the transaction. If set to `None`, no checks are performed.
     pub nonce: Option<u64>,
-    /// The chain ID of the transaction. If set to `None`, no checks are performed.
+    /// The chain ID of the tx. If set to `None`, no checks are performed.
     /// Incorporated as part of the Spurious Dragon upgrade via [EIP-155].
     pub chain_id: Option<u64>,
     /// A list of addresses and storage keys that the transaction plans to access.
@@ -429,8 +460,24 @@ pub struct TxEnv {
     pub max_fee_per_blob_gas: Option<U256>,
 }
 ```
+`TransactTo` is an enum that specifies the target of the transaction, which can be either a call or the creation of a new contract. Note that new contracts can be deterministically created by using a user-defined salt.
+```rs
+pub enum TransactTo {
+    /// Simple call to an address.
+    Call(Address),
+    /// Contract creation.
+    Create(CreateScheme),
+}
 
-### Interpreter
+pub enum CreateScheme {
+    /// Legacy create scheme of `CREATE`.
+    Create,
+    /// Create scheme of `CREATE2`.
+    Create2 { salt: U256 },
+}
+```
+
+## EVM Execution
 
 The EVM's deterministic nature ensures that Ethereum operates as a network with a state transition function. Given a current state and a series of transactions, it deterministically transitions to a new valid state.
 
@@ -438,20 +485,26 @@ Transactions either initiate message calls or deploy contracts. In both cases, t
 
 {{< figure src="/blog/images/revm/execution-diagram.png" align=center caption="_EVM execution model showcasing how the different components interact with each other._" >}}
 
-```
-
-
-
-BYTECODE          MNEMONIC         STACK                 ACTION
- 60 00          // PUSH1 0x00       // [0x00]
- 35             // CALLDATALOAD     // [number1]          Store the first 32 bytes on the stack
- 60 20          // PUSH1 0x20       // [0x20, number1]
- 35             // CALLDATALOAD     // [number2, number1] Store the second 32 bytes on the stack
- 01             // ADD              // [number2+number1]  Take two stack inputs and add the result
- 60 00          // PUSH1 0x00       // [0x0, (n2+n1)]
- 52             // MSTORE           // []                 Store (n2+n1) in the first 32 bytes of memory
- 60 20          // PUSH1 0x20       // [0x20]
- 60 00          // PUSH1 0x00       // [0x00, 0x20]
- f3             // RETURN           // []                 Return the first 32 bytes of memory
+In the next article of the series, we will review in detail how each opcode works. On the meantime, in order to further exemplify how the execution of an EVM transaction works, the following snippet showcases a representation of the bytecode that we initially disassembled: `0x6000356020350160005260206000f3` 
 
 ```
+PC   BYTECODE   MNEMONIC       STACK          ACTION
+0    60 00      PUSH1 0x00     [0x00]         Push 0 to the stack.
+2    35         CALLDATALOAD   [num1]         Load first 32 bytes on the stack.
+3    60 20      PUSH1 0x20     [0x20, num1]   Push 32 to the stack.
+5    35         CALLDATALOAD   [num2, num1]   Load second 32 bytes on the stack.
+6    01         ADD            [n2+n1]        Take 2 stack inputs and add them.
+7    60 00      PUSH1 0x00     [0x0, n2+n1]   Push 0 to the stack.
+9    52         MSTORE         []             Store n2+n1 with offset 0 in memory.
+10   60 20      PUSH1 0x20     [0x20]         Push 32 to the stack.
+12   60 00      PUSH1 0x00     [0x00, 0x20]   Push 0 to the stack.
+14   f3         RETURN         []             Return the first 32 bytes of memory.
+```
+
+Given 64 bytes of calldata (2 words), and by executing our small bytecode with the EVM interpreter, we loaded them into the stack, added them, stored them in memory, and finally returned the output. Quite an achievement!
+
+---
+
+That's a wrap! In this article, we've discussed the basics of the EVM, its high-level mechanics, and its core building blocks. Armed with this knowledge, we are better prepared to understand how these components interact with each other.
+
+Moving forward, in the next article, we will delve into the architecture of the revm implementation, providing a closer look at how it's structured. Additionally, we'll dive deeper into the EVM interpreter, exploring its role and functionality in greater detail.
