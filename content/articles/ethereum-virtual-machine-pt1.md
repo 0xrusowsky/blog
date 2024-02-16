@@ -47,7 +47,7 @@ Its design allows for the execution of smart contracts across distinct computing
 
 ## EVM Basics
 
-The following section aims to explain the theory behind each of its components, as well as showcasing the core (an abstraction of cherrypicked snippets) of their `revm` implementation. The idea is to replicate the building blocks that a developer would code when implementing the EVM from scratch.
+The following section aims to explain the theory behind each of its components, as well as showcasing the essence of their `revm` implementation. Because of that, some of the provided snippets may differ from the original code, aiming to illustrate the foundational building blocks a developer would create when coding the EVM from scratch. As we delve into the intricacies of the yellow paper, we will refine these blocks to match the real `revm` implementation.
 
 The EVM is a stack-based machine that operates with a 1024-item-deep stack, where each item is a 256-bit word. It follows a [big endian](https://developer.mozilla.org/en-US/docs/Glossary/Endianness) byte ordering convention.
 
@@ -94,7 +94,6 @@ The stack is a linear data structure that operate in a last-in, first-out (LIFO)
 pub const STACK_LIMIT: usize = 1024;
 
 /// EVM stack with [STACK_LIMIT] capacity of words.
-#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Stack {
     /// The underlying data of the stack.
     data: Vec<U256>,
@@ -135,32 +134,24 @@ impl Stack {
 During execution, the EVM utilizes **volatile memory**, functioning as a **word-addressed byte array** that resets after each transaction. This memory is linear and can be addressed by bytes (8 bits) or words (32 bytes or 256 bits), facilitating flexible data manipulation.
 
 ```rs
-/// A sequential memory shared between calls, which uses
-/// a `Vec` for internal representation.
-/// A [SharedMemory] instance should always be obtained using
-/// the `new` static method to ensure memory safety.
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct SharedMemory {
+/// A word-addressable memory, which uses a `Vec` for internal representation.
+/// A [Memory] instance should always be obtained using the `new` static method
+/// to ensure memory safety.
+pub struct Memory {
     /// The underlying buffer.
     buffer: Vec<u8>,
-    /// Memory checkpoints for each depth.
-    /// Invariant: these are always in bounds of `data`.
-    checkpoints: Vec<usize>,
-    /// Invariant: equals `self.checkpoints.last()`
-    last_checkpoint: usize,
     /// Memory limit. See [`CfgEnv`](revm_primitives::CfgEnv).
     #[cfg(feature = "memory_limit")]
     memory_limit: u64,
 }
 
-impl SharedMemory {
-    /// Creates a new memory instance that can be shared between calls.
-    /// The default initial capacity is 4KiB.
+impl Memory {
+    /// Creates a new memory instance. The default initial capacity is 4KiB.
     pub fn new() -> Self {
         Self::with_capacity(4 * 1024) // from evmone
     }
 
-    /// Creates a new memory instance that can be shared between calls with the given `capacity`.
+    /// Creates a new memory instance with the given `capacity`.
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             buffer: Vec::with_capacity(capacity),
@@ -173,47 +164,191 @@ impl SharedMemory {
 
     /// Returns a byte slice of the memory region at the given offset.
     /// Panics on out of bounds.
-    #[cfg_attr(debug_assertions, track_caller)]
     pub fn slice(&self, offset: usize, size: usize) -> &[u8] {
         let end = offset + size;
-        let last_checkpoint = self.last_checkpoint;
 
         self.buffer
-            .get(last_checkpoint + offset..last_checkpoint + offset + size)
-            .unwrap_or_else(|| {
-                debug_unreachable!("slice OOB: {offset}..{end}; len: {}", self.len())
-            })
-    }
-
-    /// Sets the given U256 `value` to the memory region at the given `offset`.
-    /// Panics on out of bounds.
-    #[cfg_attr(debug_assertions, track_caller)]
-    pub fn set_u256(&mut self, offset: usize, value: U256) {
-        self.set(offset, &value.to_be_bytes::<32>());
+            .get(offset..offset + size)
+            .unwrap()
     }
 
     /// Set memory region at given `offset`.
     /// Panics on out of bounds.
-    #[cfg_attr(debug_assertions, track_caller)]
     pub fn set(&mut self, offset: usize, value: &[u8]) {
         if !value.is_empty() {
             self.slice_mut(offset, value.len()).copy_from_slice(value);
         }
+    }
+
+    /// Sets the given U256 `value` to the memory region at the given `offset`.
+    /// Panics on out of bounds.
+    pub fn set_u256(&mut self, offset: usize, value: U256) {
+        self.set(offset, &value.to_be_bytes::<32>());
     }
 }
 ```
 
 ### Storage
 
-The EVM also has a **non-volatile storage** model where each contract keeps relevant information for the system state. The storage layout is like a hashmap: uses **key-value pairs** to access **persistent** data. At the time of writting, contracts can only interact with their own storage.
+The EVM also has a **non-volatile storage** model where each account (contract) keeps relevant information for the system state. The storage layout is like a hashmap that uses **key-value pairs** to access **persistent** data. Each contract has its own storage and -at the time of writting- can only interact with their own storage.
+
+```rs
+/// An account's Storage is a mapping of 256-bit integer key-value pairs.
+pub type Storage = HashMap<U256, U256>;
+```
+_*Note that `Hashmap` is a type defined in the standard collection. As such, among other convenient methods, it already has getter and setter functions. If you are not familiar with hashmaps yet, check the [standard library docs](https://doc.rust-lang.org/std/collections/struct.HashMap.html)._
 
 As per [EIP-1153](https://eips.ethereum.org/EIPS/eip-1153), after the Cancun hard fork, the EVM will also implement **transient storage**. A new type of data storage mechanism that identical to the regular storage, but which is **discarded after every transaction** (only persists within a transaction). Its main application being cheaper reentrancy locks.
 
-The EVM's deterministic nature ensures that Ethereum operates as a network with a state transition function. Given a current state and a series of transactions, it deterministically transitions to a new valid state.
+```rs
+/// Structure used for EIP-1153 transient storage.
+pub type TransientStorage = HashMap<(Address, U256), U256>;
+```
 
-Transactions either initiate message calls or deploy contracts. In both cases, the stack is loaded with opcodes and data (from transaction calldata, memory, or storage) to execute instructions and transition to a new state.
+### World State
 
-{{< figure src="/blog/images/revm/transition.png" align=center caption="_EVM execution model showcasing how the different components interact with each other._" >}}
+The world state, or state trie, is a mapping between addresses and account states (account basic info and its storage). Although it is not stored on the blockchain -only the state root is stored in the block header-, the EVM has access to all this information stored in a state database. At the time of writing, Ethereum uses a data structure called modified merkle-patricia trie, which requires full-nodes to maintain a the full chain state (not the history) on their local database. The [following image](https://i.stack.imgur.com/afWDt.jpg) is a nice visual representation of Ethereum's tries where you can easily see the relationship between the account storage trie, an account's basic info, and the world state trie.
+
+```rs
+/// EVM State is a mapping from addresses to accounts.
+pub type State = HashMap<Address, Account>;
+
+pub struct Account {
+    /// Balance, nonce, and code.
+    pub info: AccountInfo,
+    /// Storage cache
+    pub storage: Storage,
+    /// Account status flags.
+    pub status: AccountStatus,
+}
+
+// The `bitflags!` macro generates structs that manage a set of flags.
+bitflags! {
+    pub struct AccountStatus: u8 {
+        /// When account is loaded but not touched or interacted with.
+        /// This is the default state.
+        const Loaded = 0b00000000;
+        /// When account is newly created we will not access database
+        /// to fetch storage values
+        const Created = 0b00000001;
+        /// If account is marked for self destruction.
+        const SelfDestructed = 0b00000010;
+        /// Only when account is marked as touched we will save it to database.
+        const Touched = 0b00000100;
+    }
+}
+
+/// AccountInfo represents basic account information.
+pub struct AccountInfo {
+    /// Account balance.
+    pub balance: U256,
+    /// Account nonce.
+    pub nonce: u64,
+    /// code hash,
+    pub code_hash: B256,
+    /// code: if None, `code_by_hash` will be used to fetch the code when needed.
+    pub code: Option<Bytecode>,
+}
+
+impl Default for AccountInfo {
+    fn default() -> Self {
+        Self {
+            balance: U256::ZERO,
+            code_hash: KECCAK_EMPTY,
+            code: Some(Bytecode::new()),
+            nonce: 0,
+        }
+    }
+}
+```
+
+To efficiently manage and store persistent data, a dedicated database is used. As `revm` aims to be a modular framework, a trait (rather than a type) is implemented. This design decision allows any user-desired db architecture to be used, as long as the `Database` trait is implemented.
+
+```rs
+/// EVM database interface.
+pub trait Database {
+    type Error;
+
+    /// Get basic account information.
+    fn basic(&mut self, address: Address) -> Result<Option<AccountInfo>, Self::Error>;
+
+    /// Get account code by its hash.
+    fn code_by_hash(&mut self, code_hash: B256) -> Result<Bytecode, Self::Error>;
+
+    /// Get storage value of address at index.
+    fn storage(&mut self, address: Address, index: U256) -> Result<U256, Self::Error>;
+
+    /// Get block hash by block number.
+    fn block_hash(&mut self, number: U256) -> Result<B256, Self::Error>;
+}
+
+/// EVM database commit interface.
+pub trait DatabaseCommit {
+    /// Commit changes to the database.
+    fn commit(&mut self, changes: HashMap<Address, Account>);
+}
+```
+
+When defining traits, it is recommended to provide different levels of mutability and ownership. `Database` requires mutable access `(&mut self)` to perform state-altering operations. On the other hand, `DatabaseRef` is designed for immutable access `(&self)`, potentially allowing for concurrent read-only access.
+
+```rs
+/// read-only EVM database interface.
+pub trait DatabaseRef {
+    type Error;
+
+    /// Get basic account information.
+    fn basic_ref(&self, address: Address) -> Result<Option<AccountInfo>, Self::Error>;
+
+    /// Get account code by its hash.
+    fn code_by_hash_ref(&self, code_hash: B256) -> Result<Bytecode, Self::Error>;
+
+    /// Get storage value of address at index.
+    fn storage_ref(&self, address: Address, index: U256) -> Result<U256, Self::Error>;
+
+    /// Get block hash by block number.
+    fn block_hash_ref(&self, number: U256) -> Result<B256, Self::Error>;
+}
+```
+
+In order to minimize duplication of code and the amount of interfaces to support, the `WrapDatabaseRef` struct provides a way to adapt any implementation of `DatabaseRef` to fulfill the `Database` trait. This is particularly useful when you have a read-only implementation of a database that you want to use in a context where a mutable database interface is expected. The wrapper effectively bridges the gap between these two requirements without forcing the underlying database implementation to adopt mutability.
+
+```rs
+/// Wraps a [`DatabaseRef`] to provide a [`Database`] implementation.
+pub struct WrapDatabaseRef<T: DatabaseRef>(pub T);
+
+/// Implement the wrapper around [`DatabaseRef`].
+impl<F: DatabaseRef> From<F> for WrapDatabaseRef<F> {
+    #[inline]
+    fn from(f: F) -> Self {
+        WrapDatabaseRef(f)
+    }
+}
+
+/// Implement [`Database`] trait in an immutable manner.
+impl<T: DatabaseRef> Database for WrapDatabaseRef<T> {
+    type Error = T::Error;
+
+    #[inline]
+    fn basic(&mut self, address: Address) -> Result<Option<AccountInfo>, Self::Error> {
+        self.0.basic_ref(address)
+    }
+
+    #[inline]
+    fn code_by_hash(&mut self, code_hash: B256) -> Result<Bytecode, Self::Error> {
+        self.0.code_by_hash_ref(code_hash)
+    }
+
+    #[inline]
+    fn storage(&mut self, address: Address, index: U256) -> Result<U256, Self::Error> {
+        self.0.storage_ref(address, index)
+    }
+
+    #[inline]
+    fn block_hash(&mut self, number: U256) -> Result<B256, Self::Error> {
+        self.0.block_hash_ref(number)
+    }
+}
+```
 
 ### Gas
 
@@ -223,11 +358,20 @@ With the introduction of [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) aft
 
 To learn more about gas fees (structure, limits, pricing, etc.) check the following [article](https://ethereum.org/developers/docs/gas).
 
-## Execution Environment
+### Execution Environment
 
 Environmental data necessary for the execution of the state transition. Mainly regarding the executing block, and transaction.
 
 ```rs
+/// EVM environment configuration.
+pub struct Env {
+    /// Configuration of the block the transaction is in.
+    pub block: BlockEnv,
+    /// Configuration of the transaction that is being executed.
+    pub tx: TxEnv,
+}
+
+/// The block environment.
 pub struct BlockEnv {
     /// The number of ancestor blocks of this block (block height).
     pub number: U256,
@@ -250,8 +394,49 @@ pub struct BlockEnv {
     /// Incorporated as part of the Cancun upgrade via [EIP-4844].
     pub blob_excess_gas_and_price: Option<BlobExcessGasAndPrice>,
 }
+
+/// The transaction environment.
+pub struct TxEnv {
+    /// Caller aka Author aka transaction signer.
+    pub caller: Address,
+    /// The gas limit of the transaction.
+    pub gas_limit: u64,
+    /// The gas price of the transaction.
+    pub gas_price: U256,
+    /// The destination of the transaction.
+    pub transact_to: TransactTo,
+    /// The value sent to `transact_to`.
+    pub value: U256,
+    /// The data of the transaction.
+    pub data: Bytes,
+    /// The nonce of the transaction. If set to `None`, no checks are performed.
+    pub nonce: Option<u64>,
+    /// The chain ID of the transaction. If set to `None`, no checks are performed.
+    /// Incorporated as part of the Spurious Dragon upgrade via [EIP-155].
+    pub chain_id: Option<u64>,
+    /// A list of addresses and storage keys that the transaction plans to access.
+    /// Added in [EIP-2930].
+    pub access_list: Vec<(Address, Vec<U256>)>,
+    /// The priority fee per gas.
+    /// Incorporated as part of the London upgrade via [EIP-1559].
+    pub gas_priority_fee: Option<U256>,
+    /// The list of blob versioned hashes. Per EIP there should be at least
+    /// one blob present if [`Self::max_fee_per_blob_gas`] is `Some`.
+    /// Incorporated as part of the Cancun upgrade via [EIP-4844].
+    pub blob_hashes: Vec<B256>,
+    /// The max fee per blob gas.
+    /// Incorporated as part of the Cancun upgrade via [EIP-4844].
+    pub max_fee_per_blob_gas: Option<U256>,
+}
 ```
 
+### Interpreter
+
+The EVM's deterministic nature ensures that Ethereum operates as a network with a state transition function. Given a current state and a series of transactions, it deterministically transitions to a new valid state.
+
+Transactions either initiate message calls or deploy contracts. In both cases, the stack is loaded with opcodes and data (from transaction calldata, memory, or storage) to execute instructions and transition to a new state.
+
+{{< figure src="/blog/images/revm/execution-diagram.png" align=center caption="_EVM execution model showcasing how the different components interact with each other._" >}}
 
 ```
 
