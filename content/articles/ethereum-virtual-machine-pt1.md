@@ -15,7 +15,7 @@ draft: false
 ---
 
 # What are Virtual Machines?
-At their core, VMs are software emulations of physical computers. They encapsulate an entire computing environment within a layer of abstraction that runs atop physical hardware. This design allows VMs to offer a sandboxed execution environment for applications, ensuring that software runs independently of the underlying hardware specifics. As you can tell, these properties are perfect for distributed systems that aim to decentralize its execution around the globe.
+At their core, VMs are software emulations of physical computers. They encapsulate an entire computing environment within a layer of abstraction that runs atop physical hardware. This design allows VMs to offer a sandboxed execution environment for applications, ensuring that software runs independently of the underlying hardware specifics. A great simplification of VMs' features could be: _compile once, run anywhere._ As you can tell, these properties are perfect for distributed systems that aim to decentralize its execution around the globe.
 
 *But how do they work?* VMs are sophisticated programs that execute bytecode, a form of precompiled, low-level instructions designed for efficient execution by the VM. Each instruction consists of an operation code (opcode) and its arguments, guiding how the VM manipulates data and manages operations.
 
