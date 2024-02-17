@@ -15,7 +15,7 @@ draft: false
 ---
 
 # What are Virtual Machines?
-At their core, VMs are software emulations of physical computers. They encapsulate an entire computing environment within a layer of abstraction that runs atop physical hardware. This design allows VMs to offer a sandboxed execution environment for applications, ensuring that software runs independently of the underlying hardware specifics. A great simplification of VMs' features could be: _compile once, run anywhere._ As you can tell, these properties are perfect for distributed systems that aim to decentralize its execution around the globe.
+At their core, VMs are software emulations of physical computers. They encapsulate an entire computing environment within a layer of abstraction that runs atop physical hardware. This design allows VMs to offer a sandboxed execution environment for applications, ensuring that software runs independently of the underlying hardware specifics. As you can tell, these properties are perfect for distributed systems that aim to decentralize its execution around the globe.
 
 *But how do they work?* VMs are sophisticated programs that execute bytecode, a form of precompiled, low-level instructions designed for efficient execution by the VM. Each instruction consists of an operation code (opcode) and its arguments, guiding how the VM manipulates data and manages operations.
 
@@ -489,6 +489,71 @@ Transactions can only be triggered by externally-owned accounts (EOAs), and they
 
 {{< figure src="/blog/images/revm/execution-diagram.png" align=center caption="_EVM execution model showcasing how the different components interact with each other._" >}}
 
+### The Interpreter
+
+As seen in the previous diagram, the interpreter is the core engine of the EVM. It is in charge of running the execution loop that processes and executes each of the instructions stored in the bytecode.
+
+Based on the above definition, we could label: program counter, stack, memory, and gas, as direct (internal) dependencies of the interpreter. Whereas storage, and the execution context, are somehow agnostic to it (external). Because of that, it seems reasonable to separate both implementations under different crates.
+
+### The Host
+
+This explicit separation, surfaces the need for an interface that facilitates the interaction of the EVM interpreter with its environment, encompassing essential operations such as accessing block, transaction or account data, accessing storage, or logging data. To fulfill this need, the `Host` trait has been created.
+
+```rs
+/// EVM context host.
+pub trait Host {
+    /// Returns a mutable reference to the environment.
+    fn env(&mut self) -> &mut Env;
+
+    /// Loads an account. Returns (is_cold, is_new_account)
+    fn load_account(&mut self, address: Address) -> Option<(bool, bool)>;
+
+    /// Get the block hash of the given block `number`.
+    fn block_hash(&mut self, number: U256) -> Option<B256>;
+
+    /// Get balance of `address` and if the account is cold.
+    fn balance(&mut self, address: Address) -> Option<(U256, bool)>;
+
+    /// Get code of `address` and if the account is cold.
+    fn code(&mut self, address: Address) -> Option<(Bytecode, bool)>;
+
+    /// Get code hash of `address` and if the account is cold.
+    fn code_hash(&mut self, address: Address) -> Option<(B256, bool)>;
+
+    /// Get storage value of `address` at `index` and if the account is cold.
+    fn sload(&mut self, address: Address, index: U256) -> Option<(U256, bool)>;
+
+    /// Set storage value of account address at index.
+    /// Returns (original, present, new, is_cold).
+    fn sstore(
+        &mut self,
+        address: Address,
+        index: U256,
+        value: U256,
+    ) -> Option<(U256, U256, U256, bool)>;
+
+    /// Get the transient storage value of `address` at `index`.
+    fn tload(&mut self, address: Address, index: U256) -> U256;
+
+    /// Set the transient storage value of `address` at `index`.
+    fn tstore(&mut self, address: Address, index: U256, value: U256);
+
+    /// Emit a log owned by `address` with given `LogData`.
+    fn log(&mut self, log: Log);
+
+    /// Mark `address` to be deleted, with funds transferred to `target`.
+    fn selfdestruct(
+        &mut self,
+        address: Address,
+        target: Address
+    ) -> Option<SelfDestructResult>;
+}
+```
+
+This abstraction allows the interpreter to interact with any host environment -as long as the trait is implemented-, thereby enhancing modularity and interoperability. Different implementations can be used to simulate different environments when connecting to different EVM-compatible networks.
+
+### A closing example
+
 In the next article of the series, we will review in detail how each opcode works. On the meantime, in order to further exemplify how the execution of an EVM transaction works, the following snippet showcases a representation of the bytecode that we initially disassembled: `0x6000356020350160005260206000f3`.
 
 ```
@@ -511,4 +576,4 @@ Given 64 bytes of calldata (2 words), and by executing our small bytecode with t
 
 That's a wrap! In this article, we've discussed the basics of the EVM, its high-level mechanics, and its core building blocks. Armed with this knowledge, we are better prepared to understand how these components interact with each other.
 
-Moving forward, in the next article, we will delve into the architecture of the revm implementation, providing a closer look at how it's structured. Additionally, we'll dive deeper into the EVM interpreter, exploring its role and functionality in greater detail.
+Moving forward, in the next article, we will delve into the EVM interpreter, exploring its role and functionality in greater detail. Specifically, we will focus on the instruction set that powers the EVM.
