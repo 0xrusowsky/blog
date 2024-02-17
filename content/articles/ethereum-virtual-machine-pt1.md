@@ -155,8 +155,6 @@ impl Memory {
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             buffer: Vec::with_capacity(capacity),
-            checkpoints: Vec::with_capacity(32),
-            last_checkpoint: 0,
             #[cfg(feature = "memory_limit")]
             memory_limit: u64::MAX,
         }
@@ -191,10 +189,19 @@ impl Memory {
     }
 }
 ```
+Finally, as memory can be expanded up to a max capacity, the implementation should also have method to resize its buffer. Note that expansion only impacts memory size, the underlying data of the expanded section remains empty -it is filled with zeros-.
+```rs
+impl Memory {
+    /// Resizes the memory in-place so that `len` is equal to `new_len`.
+    pub fn resize(&mut self, new_size: usize) {
+        self.buffer.resize(new_size, 0);
+    }
+}
+```
 
 ### Storage
 
-The EVM also has a **non-volatile storage** model where each account (contract) keeps relevant information for the system state. The storage layout is like a hashmap that uses **key-value pairs** to access **persistent** data. Each contract has its own storage and -at the time of writting- can only interact with their own storage.
+The EVM also has a **non-volatile storage** model where each account (contract) keeps relevant information of the system state. The storage layout is like a hashmap that uses **key-value pairs** to access **persistent** data. Each contract has its own storage and -at the time of writting- can only interact with their own storage.
 
 ```rs
 /// An account's Storage is a mapping of 256-bit integer key-value pairs.
@@ -315,7 +322,6 @@ pub struct WrapDatabaseRef<T: DatabaseRef>(pub T);
 
 /// Implement the wrapper around [`DatabaseRef`].
 impl<F: DatabaseRef> From<F> for WrapDatabaseRef<F> {
-    #[inline]
     fn from(f: F) -> Self {
         WrapDatabaseRef(f)
     }
@@ -325,22 +331,18 @@ impl<F: DatabaseRef> From<F> for WrapDatabaseRef<F> {
 impl<T: DatabaseRef> Database for WrapDatabaseRef<T> {
     type Error = T::Error;
 
-    #[inline]
     fn basic(&mut self, address: Address) -> Result<Option<AccountInfo>, Self::Error> {
         self.0.basic_ref(address)
     }
 
-    #[inline]
     fn code_by_hash(&mut self, code_hash: B256) -> Result<Bytecode, Self::Error> {
         self.0.code_by_hash_ref(code_hash)
     }
 
-    #[inline]
     fn storage(&mut self, address: Address, index: U256) -> Result<U256, Self::Error> {
         self.0.storage_ref(address, index)
     }
 
-    #[inline]
     fn block_hash(&mut self, number: U256) -> Result<B256, Self::Error> {
         self.0.block_hash_ref(number)
     }
@@ -391,7 +393,7 @@ To learn more about gas fees (structure, limits, pricing, etc.) check the follow
 
 ### Execution Environment
 
-Environmental data necessary for the execution of the state transition. This section is quite self-explanatory thanks to the verbose (great) comments, and shouldn't be new to people who are already familiar with the Ethereum network.
+Environmental data necessary for the execution of the state transition. This section is quite self-explanatory thanks to the verbose (great) comments of the `revm` contributors. Overall, it shouldn't introduce new topics to people who are already familiar with the Ethereum network.
 
 ```rs
 /// EVM environment configuration.
@@ -438,7 +440,7 @@ pub struct TxEnv {
     pub transact_to: TransactTo,
     /// The value sent to `transact_to`.
     pub value: U256,
-    /// The data of the transaction.
+    /// The calldata of the transaction.
     pub data: Bytes,
     /// The nonce of the transaction. If set to `None`, no checks are performed.
     pub nonce: Option<u64>,
@@ -460,6 +462,8 @@ pub struct TxEnv {
     pub max_fee_per_blob_gas: Option<U256>,
 }
 ```
+_Note: The blob-related attributes refer to a new gas pricing mechanism for blob-carrying transactions. These are similar to regular transactions but include an additional set of data called blob (Binary Large Object). The main goal of this change is to allow roll-ups to still post their commitments on-chain. However, instead of doing it on the execution layer via calldata, they can do it on the beacon chain (consensus layer), where the blobs will be pruned in a couple of weeks. This pruning timeline gives enough time for provers to check the data commitments of the rollup and challenge them if necessary. For further detail check the [proto-danksharding website](https://www.eip4844.com/)._
+
 `TransactTo` is an enum that specifies the target of the transaction, which can be either a call or the creation of a new contract. Note that new contracts can be deterministically created by using a user-defined salt.
 ```rs
 pub enum TransactTo {
@@ -481,11 +485,11 @@ pub enum CreateScheme {
 
 The EVM's deterministic nature ensures that Ethereum operates as a network with a state transition function. Given a current state and a series of transactions, it deterministically transitions to a new valid state.
 
-Transactions either initiate message calls or deploy contracts. In both cases, the stack is loaded with opcodes and data (from transaction calldata, memory, or storage) to execute instructions and transition to a new state.
+Transactions can only be triggered by externally-owned accounts (EOAs), and they either initiate message calls or deploy new contracts. In both cases, the stack is loaded with opcodes and data (from transaction calldata, memory, or storage) to execute instructions and transition to a new state.
 
 {{< figure src="/blog/images/revm/execution-diagram.png" align=center caption="_EVM execution model showcasing how the different components interact with each other._" >}}
 
-In the next article of the series, we will review in detail how each opcode works. On the meantime, in order to further exemplify how the execution of an EVM transaction works, the following snippet showcases a representation of the bytecode that we initially disassembled: `0x6000356020350160005260206000f3` 
+In the next article of the series, we will review in detail how each opcode works. On the meantime, in order to further exemplify how the execution of an EVM transaction works, the following snippet showcases a representation of the bytecode that we initially disassembled: `0x6000356020350160005260206000f3`.
 
 ```
 PC   BYTECODE   MNEMONIC       STACK          ACTION
