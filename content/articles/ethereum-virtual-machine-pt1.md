@@ -1,6 +1,6 @@
 ---
 title: "Ethereum Virtual Machine (in Rust) - Part 1"
-date: 2024-02-15T19:54:00+00:00
+date: 2024-02-18T20:00:00+00:00
 slug: revm-pt1
 category: article 
 summary: Introduction to the EVM and its Rust implementation.
@@ -10,7 +10,7 @@ cover:
   alt:
   caption: 
   relative:
-showtoc: false
+showtoc: true
 draft: false
 ---
 
@@ -45,7 +45,7 @@ Its design allows for the execution of smart contracts across distinct computing
 - **Gas Mechanism**: Solving the halting problem by metering computation, ensuring all operations are finite and predictable.
 - **Cross-Contract Communication**: Facilitating interactions between contracts via call and delegatecall mechanisms.
 
-## EVM Basics
+# EVM Basics
 
 The following section aims to explain the theory behind each of its components, as well as showcasing the essence of their `revm` implementation. Because of that, some of the provided snippets may differ from the original code, aiming to illustrate the foundational building blocks a developer would create when coding the EVM from scratch. As we delve into the intricacies of the yellow paper, we will refine these blocks to match the real `revm` implementation.
 
@@ -53,7 +53,7 @@ The following section aims to explain the theory behind each of its components, 
 
 The EVM is a stack-based machine that operates with a 1024-item-deep stack, where each item is a 256-bit word. It follows a [big endian](https://developer.mozilla.org/en-US/docs/Glossary/Endianness) byte ordering convention.
 
-### Byte Primitive Types
+## Byte Primitive Types
 
 Bytes can be implemented as bit vectors `Vec<u8>`. If they have a predefined number of bits (i.e. addresses) as fixed-length arrays `[u8; N]`.
 The ethereum <> rust ecosystem relies on 2 main crates to handle byte primitive types: [ruint](https://github.com/recmo/uint) and [alloy-primitives](https://github.com/alloy-rs/core/). These crates define several types that reduce the burthen of having to work with bytes, with built-in arithmetic and bitwise operations, as well as seamingless conversion from one type to another. The most common types are:
@@ -85,7 +85,7 @@ pub struct Log<T = LogData> {
 ```
 As previously said, all these types come with convenient methods. [Check the docs](https://docs.rs/alloy-primitives/latest/alloy_primitives/) for further details.
 
-### Stack
+## Stack
 
 The stack is a linear data structure that operate in a last-in, first-out (LIFO) manner, where elements are added (pushed) and removed (popped) from the end of the sequence (top of the stack).
 
@@ -129,7 +129,7 @@ impl Stack {
 }
 ```
 
-### Memory
+## Memory
 
 During execution, the EVM utilizes **volatile memory**, functioning as a **word-addressed byte array** that resets after each transaction. This memory is linear and can be addressed by bytes (8 bits) or words (32 bytes or 256 bits), facilitating flexible data manipulation.
 
@@ -199,7 +199,7 @@ impl Memory {
 }
 ```
 
-### Storage
+## Storage
 
 The EVM also has a **non-volatile storage** model where each account (contract) keeps relevant information of the system state. The storage layout is like a hashmap that uses **key-value pairs** to access **persistent** data. Each contract has its own storage and -at the time of writting- can only interact with their own storage.
 
@@ -209,7 +209,7 @@ pub type Storage = HashMap<U256, U256>;
 ```
 _*Note that `Hashmap` is a type defined in the standard library. As such, among other convenient methods, it already has getter and setter functions. If you are not familiar with hashmaps yet, [check its docs](https://doc.rust-lang.org/std/collections/struct.HashMap.html)._
 
-### World State
+## World State
 
 The world state, or state trie, is a mapping between addresses and account states (account basic info and its storage). Although it is not stored on the blockchain -only the state root is stored in the block header-, the EVM has access to all this information stored in a state database. At the time of writing, Ethereum uses a data structure called modified merkle-patricia trie, which requires full-nodes to maintain a the full chain state (not the history) on their local database. The [following image](https://i.stack.imgur.com/afWDt.jpg) is a nice visual representation of Ethereum's tries where you can easily see the relationship between the account storage trie, an account's basic info, and the world state trie.
 
@@ -350,7 +350,7 @@ impl<T: DatabaseRef> Database for WrapDatabaseRef<T> {
 ```
 
 
-### Transient Storage
+## Transient Storage
 
 As per [EIP-1153](https://eips.ethereum.org/EIPS/eip-1153), after the Cancun hard fork, the EVM will also implement **transient storage**. A new type of data storage mechanism that is identical to regular storage, but which is **discarded after every transaction** (only persists within a transaction). Its main application being cheaper reentrancy locks.
 
@@ -361,7 +361,7 @@ This difference between the two, means that the `TransientStorage` definition ca
 pub type TransientStorage = HashMap<(Address, U256), U256>;
 ```
 
-### Gas
+## Gas
 
 As for computation costs, the EVM employs a mechanism pricing mechanism called gas. In order to execute a transaction, users must pay a gas fee to compensate for the computaional resources that they spend. By doing so, we can ensure that the network is not vulnerable to spam and cannot get stuck in infinite computational loops. The gas associated with each operation is different, and must be paid regardless of the outcome of the transaction, even if it reverts.
 
@@ -391,7 +391,7 @@ With the introduction of [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) aft
 
 To learn more about gas fees (structure, limits, pricing, etc.) check the following [article](https://ethereum.org/developers/docs/gas).
 
-### Execution Environment
+## Execution Environment
 
 Environmental data necessary for the execution of the state transition. This section is quite self-explanatory thanks to the verbose (great) comments of the `revm` contributors. Overall, it shouldn't introduce new topics to people who are already familiar with the Ethereum network.
 
@@ -481,7 +481,7 @@ pub enum CreateScheme {
 }
 ```
 
-## EVM Execution
+# EVM Execution
 
 The EVM's deterministic nature ensures that Ethereum operates as a network with a state transition function. Given a current state and a series of transactions, it deterministically transitions to a new valid state.
 
@@ -489,13 +489,13 @@ Transactions can only be triggered by externally-owned accounts (EOAs), and they
 
 {{< figure src="/blog/images/revm/execution-diagram.png" align=center caption="_EVM execution model showcasing how the different components interact with each other._" >}}
 
-### The Interpreter
+## The Interpreter
 
 As seen in the previous diagram, the interpreter is the core engine of the EVM. It is in charge of running the execution loop that processes and executes each of the instructions stored in the bytecode.
 
 Based on the above definition, we could label: program counter, stack, memory, and gas, as direct (internal) dependencies of the interpreter. Whereas storage, and the execution context, are somehow agnostic to it (external). Because of that, it seems reasonable to separate both implementations under different crates.
 
-### The Host
+## The Host
 
 This explicit separation, surfaces the need for an interface that facilitates the interaction of the EVM interpreter with its environment, encompassing essential operations such as accessing block, transaction or account data, accessing storage, or logging data. To fulfill this need, the `Host` trait has been created.
 
@@ -552,7 +552,7 @@ pub trait Host {
 
 This abstraction allows the interpreter to interact with any host environment -as long as the trait is implemented-, thereby enhancing modularity and interoperability. Different implementations can be used to simulate different environments when connecting to different EVM-compatible networks.
 
-### A closing example
+## A closing example
 
 In the next article of the series, we will review in detail how each opcode works. On the meantime, in order to further exemplify how the execution of an EVM transaction works, the following snippet showcases a representation of the bytecode that we initially disassembled: `0x6000356020350160005260206000f3`.
 
