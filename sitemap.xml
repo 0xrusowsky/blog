@@ -3,10 +3,13 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://0xrusowsky.github.io/blog/</loc>
-    <lastmod>2024-02-12T19:54:00+00:00</lastmod>
+    <lastmod>2024-02-18T20:00:00+00:00</lastmod>
   </url><url>
     <loc>https://0xrusowsky.github.io/blog/articles/</loc>
-    <lastmod>2024-02-12T19:54:00+00:00</lastmod>
+    <lastmod>2024-02-18T20:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://0xrusowsky.github.io/blog/articles/revm-pt1/</loc>
+    <lastmod>2024-02-18T20:00:00+00:00</lastmod>
   </url><url>
     <loc>https://0xrusowsky.github.io/blog/articles/ethereum-made-in-rust/</loc>
     <lastmod>2024-02-12T19:54:00+00:00</lastmod>
