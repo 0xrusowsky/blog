@@ -4,7 +4,7 @@ date: 2024-02-18T20:00:00+00:00
 slug: revm-pt1
 category: article 
 summary: Introduction to the EVM and its Rust implementation.
-description: "First chapter of the Ethereum, but made in Rust series. In this first episode, I explore revm: a rust implementation of the Ethereum Virtual Machine."
+description: "First chapter of the Ethereum, but made in Rust series. In this first episode, I explore the foundational building blocks of revm: a Rust implementation of the Ethereum Virtual Machine."
 cover:
   image:
   alt:
