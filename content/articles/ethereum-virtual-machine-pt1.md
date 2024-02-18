@@ -15,7 +15,7 @@ draft: false
 ---
 
 # What are Virtual Machines?
-At their core, VMs are software emulations of physical computers. They encapsulate an entire computing environment within a layer of abstraction that runs atop physical hardware. This design allows VMs to offer a sandboxed execution environment for applications, ensuring that software runs independently of the underlying hardware specifics. As you can tell, these properties are perfect for distributed systems that aim to decentralize its execution around the globe.
+At their core, VMs are software emulations of physical computers. They encapsulate an entire computing environment within a layer of abstraction that runs atop physical hardware. This design allows VMs to offer a sandboxed execution environment for applications, ensuring that software runs independently of the underlying hardware specifics. As you can tell, these properties are perfect for distributed systems aiming to decentralize their execution around the globe.
 
 *But how do they work?* VMs are sophisticated programs that execute bytecode, a form of precompiled, low-level instructions designed for efficient execution by the VM. Each instruction consists of an operation code (opcode) and its arguments, guiding how the VM manipulates data and manages operations.
 
@@ -24,7 +24,7 @@ The execution process within a VM follows a simple yet powerful loop, with a pro
 1. **Fetch**: Retrieve the instruction at the position indicated by the PC.
 2. **Execute**: Carry out the operation specified by the instruction, which may involve arithmetic calculations, memory access, or other data manipulations.
 3. **Jump**: If the instruction involves a jump, update the PC to point to the target instruction within the bytecode.
-4. **Increment**: Otherwise, simply advance the PC to the next opcode. _Note that some opcodes may require inputs, and that the PC can increment by more than 1 at a time._
+4. **Increment**: Otherwise, simply advance the PC to the next opcode. _Note that some opcodes may require inputs and that the PC can increment by more than 1 at a time._
 
 For instance, let's disassemble `0x6000356020350160005260206000f3` into bytes. We will assume that the opcode `0x60` consumes 1 byte, and that there are no jump instructions within this bytecode.
 
@@ -56,7 +56,7 @@ The EVM is a stack-based machine that operates with a 1024-item-deep stack, wher
 ## Byte Primitive Types
 
 Bytes can be implemented as bit vectors `Vec<u8>`. If they have a predefined number of bits (i.e. addresses) as fixed-length arrays `[u8; N]`.
-The ethereum <> rust ecosystem relies on 2 main crates to handle byte primitive types: [ruint](https://github.com/recmo/uint) and [alloy-primitives](https://github.com/alloy-rs/core/). These crates define several types that reduce the burthen of having to work with bytes, with built-in arithmetic and bitwise operations, as well as seamingless conversion from one type to another. The most common types are:
+The Ethereum <> Rust ecosystem relies on 2 main crates to handle byte primitive types: [ruint](https://github.com/recmo/uint) and [alloy-primitives](https://github.com/alloy-rs/core/). These crates define several types that reduce the burden of having to work with bytes, with built-in arithmetic and bitwise operations, as well as seamless conversion from one type to another. The most common types are:
 ```rs
 // Wrapper type around bytes::Bytes to support “0x” prefixed hex strings.
 // For simplicity, you can think of bytes::Bytes as an optimized impl of Vec<u8>.
@@ -161,7 +161,7 @@ impl Memory {
     }
 }
 ```
-Since memory is a word-addressable byte array, its getter and setter methods will require an `offset` and a `size`. Note that when setting a value, its size can be derived from its length.
+Since memory is a word-addressable byte array, its getter and setter methods require an `offset` and a `size`. Note that when setting a value, its size can be derived from its length.
 ```rs
 impl Memory {
     /// Returns a byte slice of the memory region at the given offset.
@@ -189,7 +189,7 @@ impl Memory {
     }
 }
 ```
-Finally, as memory can be expanded up to a max capacity, the implementation should also have method to resize its buffer. Note that expansion only impacts memory size, the underlying data of the expanded section remains empty -it is filled with zeros-.
+Finally, as memory can be expanded up to a max capacity, the implementation should also have a method to resize its buffer. Note that expansion only impacts memory size, the underlying data of the expanded section remains empty -it is filled with zeros-.
 ```rs
 impl Memory {
     /// Resizes the memory in-place so that `len` is equal to `new_len`.
@@ -201,7 +201,7 @@ impl Memory {
 
 ## Storage
 
-The EVM also has a **non-volatile storage** model where each account (contract) keeps relevant information of the system state. The storage layout is like a hashmap that uses **key-value pairs** to access **persistent** data. Each contract has its own storage and -at the time of writting- can only interact with their own storage.
+The EVM also has a **non-volatile storage** model where each account (contract) keeps relevant information of the system state. The storage layout is like a hashmap that uses **key-value pairs** to access **persistent** data. Each contract has its own storage and -at the time of writing- can only interact with their own storage.
 
 ```rs
 /// An account's Storage is a mapping of 256-bit integer key-value pairs.
@@ -211,7 +211,7 @@ _*Note that `Hashmap` is a type defined in the standard library. As such, among 
 
 ## World State
 
-The world state, or state trie, is a mapping between addresses and account states (account basic info and its storage). Although it is not stored on the blockchain -only the state root is stored in the block header-, the EVM has access to all this information stored in a state database. At the time of writing, Ethereum uses a data structure called modified merkle-patricia trie, which requires full-nodes to maintain a the full chain state (not the history) on their local database. The [following image](https://i.stack.imgur.com/afWDt.jpg) is a nice visual representation of Ethereum's tries where you can easily see the relationship between the account storage trie, an account's basic info, and the world state trie.
+The world state, or state trie, is a mapping between addresses and account states (account basic info and its storage). Although it is not stored on the blockchain -only the state root is stored in the block header-, the EVM has access to all this information stored in a state database. At the time of writing, Ethereum uses a data structure called modified merkle-patricia trie, which requires full-nodes to maintain the full chain state (not the history) on their local database. The [following image](https://i.stack.imgur.com/afWDt.jpg) is a nice visual representation of Ethereum's tries where you can easily see the relationship between the account storage trie, an account's basic info, and the world state trie.
 
 ```rs
 /// EVM State is a mapping from addresses to accounts.
@@ -363,11 +363,11 @@ pub type TransientStorage = HashMap<(Address, U256), U256>;
 
 ## Gas
 
-As for computation costs, the EVM employs a mechanism pricing mechanism called gas. In order to execute a transaction, users must pay a gas fee to compensate for the computaional resources that they spend. By doing so, we can ensure that the network is not vulnerable to spam and cannot get stuck in infinite computational loops. The gas associated with each operation is different, and must be paid regardless of the outcome of the transaction, even if it reverts.
+As for computation costs, the EVM employs a mechanism pricing mechanism called gas. in order to execute a transaction, users must pay a gas fee to compensate for the computational resources they spend. By doing so, we can ensure that the network is not vulnerable to spam and cannot get stuck in infinite computational loops. The gas associated with each operation is different, and must be paid regardless of the outcome of the transaction, even if it reverts.
 
-Apart from the computation costs, extra gas is charged in order to form the payment for a subordinate message call or contract creation (payment is embeded in the `CREATE`, `CREATE2`, `CALL` and `CALLCODE` opcodes).
+Apart from the computation costs, extra gas is charged to form the payment for a subordinate message call or contract creation (payment is embedded in the `CREATE`, `CREATE2`, `CALL` and `CALLCODE` opcodes).
 
-On top of that, extra gas is also charged when expanding the memory. Since memory is word-addressable, its expansion happens in 32 byte bounds. Note that expansion will happend regardless of the nature of the memory operation (either read or write).
+On top of that, extra gas is also charged when expanding the memory. Since memory is word-addressable, its expansion happens in 32-byte bounds. Note that expansion will happen regardless of the nature of the memory operation (either read or write).
 
 Finally, to help address the state growth problem, gas refunds are given when storage slots are cleared.
 
