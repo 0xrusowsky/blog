@@ -396,6 +396,98 @@ Rather than manually updating enums, or match statements, this approach establis
 
 ### More types: Opcode Information
 
+The `OpInfo` struct also plays an important role in opcode handling, providing a compact and efficient way to store and access relevant information for the execution of each opcode. By packing this data into a single u32, `OpInfo` minimizes memory usage while maintaining quick access to opcode metadata.
+
+```rs
+pub struct OpInfo {
+    /// Data contains few information packed inside u32:
+    /// IS_JUMP (1bit) | IS_GAS_BLOCK_END (1bit) | IS_PUSH (1bit) | GAS (29bits)
+    data: u32,
+}
+```
+
+- `IS_JUMP` **(1 bit):** Indicates if the opcode is a jump operation (`JUMP` or `JUMPI`). This information is useful for control flow management.
+- `IS_GAS_BLOCK_END` **(1 bit):** Marks the opcode as ending a block of operations that are considered for gas calculation purposes.
+- `IS_PUSH` **(1 bit):** Identifies the opcode as a push operation.
+- `GAS` **(29 bits)**: Stores the gas cost associated with the opcode. This allows for quick access to gas requirements, facilitating efficient gas calculation during execution.
+    
+As the information is packed in a single field, to manipulate and interpret the `data` within `OpInfo`, several bitmasks and utility functions are defined:
+
+```rs
+const JUMP_MASK: u32 = 0x80000000;
+const GAS_BLOCK_END_MASK: u32 = 0x40000000;
+const IS_PUSH_MASK: u32 = 0x20000000;
+const GAS_COST_MASK: u32 = 0x1FFFFFFF;
+```
+
+_Note: We will dive deeper into gas later on the series but, as a rule of thumb, you can assume that all opcodes have a fixed gas cost: `ZERO`, `BASE`, `VERYLOW`, `LOW`, `MID`, `HIGH`, or custom values. Additionally, some opcodes will also incur a dynamic gas costs depending on their runtime behavior._
+
+Most of the `OpInfo` elements are instantiated by only informing their gas cost (as they are neither jumps, push, or end-of-block opcodes) using `fn gas(gas: u64) -> OpInfo`. Additionally, to get the gas cost associated with an opcode, we simply need to apply the `GAS_COST_MASK` to the data by using a bitwise `AND` operator.
+
+```rs
+impl OpInfo {
+    /// Creates a new [`OpInfo`] with the given gas value.
+    pub const fn gas(gas: u64) -> Self {
+        Self { data: gas as u32 }
+    }
+
+    /// Returns the gas cost of the opcode.
+    pub fn get_gas(self) -> u32 {
+        self.data & GAS_MASK
+    }
+}
+```
+
+Generator and checker functions are implemented for each of the bitmasks listed above. For the sake of brevity, we will only look at the constructor for push opcodes `fn push_opcode() -> OpInfo`, which stores the gas information in the first 29 bits, and uses a bitwise `OR` in conjunction with the `IS_PUSH_MASK` to flip the bit that sets the opcode to `IS_PUSH`. Inversely, to check whether an opcode `IS_PUSH`, we simply need to use the `IS_PUSH_MASK` to check if the relevant bit is set to 1.
+
+```rs
+impl OpInfo {
+    /// Creates a new push [`OpInfo`].
+    pub const fn push_opcode() -> Self {
+        Self {
+            data: gas::VERYLOW as u32 | IS_PUSH_MASK,
+        }
+    }
+
+    /// Whether the opcode is a PUSH opcode or not.
+    pub fn is_push(self) -> bool {
+        self.data & IS_PUSH_MASK == IS_PUSH_MASK
+    }
+}
+```
+
+Finally, similar to `InstructionTable` or `OPCODE_JUMPMAP`, it is useful to create an array (indexable by opcode value) with the generated `OpInfo`. To do so, the following functions are employed.
+
+```rs
+const fn make_gas_table(spec: SpecId) -> [OpInfo; 256] {
+    let mut table = [OpInfo::none(); 256];
+    let mut i = 0;
+    while i < 256 {
+        table[i] = opcode_gas_info(i as u8, spec);
+        i += 1;
+    }
+    table
+}
+
+const fn opcode_gas_info(opcode: u8, spec: SpecId) -> OpInfo {
+    match opcode {
+        STOP => OpInfo::gas_block_end(0),
+        ADD => OpInfo::gas(gas::VERYLOW),
+        MUL => OpInfo::gas(gas::LOW),
+        // ...
+        PUSH1 => OpInfo::push_opcode(),
+        PUSH2 => OpInfo::push_opcode(),
+        // ...
+        POP => OpInfo::gas(gas::BASE),
+        MLOAD => OpInfo::gas(gas::VERYLOW),
+        MSTORE => OpInfo::gas(gas::VERYLOW),
+        // ...
+        RETURN => OpInfo::gas_block_end(0),
+    }
+}
+```
+Note that besides maintaining the `opcodes!` macro, `opcode_gas_info` must also be maintained for gas updates.
+
 ### Logic Implementation
 
 After analyzing all the building blocks, it is now time to dive into the implementation of each opcode. First though, let's see how the interpreter consumes and processes each opcode in the execution loop.
@@ -421,6 +513,105 @@ impl Interpreter {
 }
 ```
 
-#### Arithmetic
+The following sections will cover the implementation functinos for the different opcode instructions. Apart from the [yellow paper](https://ethereum.github.io/yellowpaper/paper.pdf), which has a highly mathematical lens, [evm.codes](https://www.evm.codes) is an extremelly useful resources, where not only comprehensive and clear explanations can be found, but there is also a playground to fully understand the behavior of arbitrary bytecode and calldata.
+
+#### Useful Macros
+
+Before diving into the actual implementations, we will first define some useful macros that will be frequently used by the instructions. Other than for convenience purposes, these macros are generally used as a workaround to set interpreter results and return in case of an error, as the opcode `Instruction` does not return any values.
+
+The `pop!` macro is a flexible procedural macro that pops up to 4 words (maximum popped by any opcode) from the stack, while handling reverts in the event of a `InstructionResult::StackUnderflow`. Similarly, `pop_address!` and `pop_top!` are also implemented. While `pop_address!` converts the resulting `U256` words into `Address`, `pop_top!` pops up to 2 words and returns a reference to the new top-most item of the stack.
+
+```rs
+macro_rules! pop {
+    ($interp:expr, $x1:ident) => {
+        if $interp.stack.len() < 1 {
+            $interp.instruction_result = InstructionResult::StackUnderflow;
+            return ();
+        }
+        // SAFETY: Length is checked above.
+        let $x1 = unsafe { $interp.stack.pop_unsafe() };
+    };
+    ($interp:expr, $x1:ident, $x2:ident) => {
+        if $interp.stack.len() < 2 {
+            $interp.instruction_result = InstructionResult::StackUnderflow;
+            return ();
+        }
+        // SAFETY: Length is checked above.
+        let ($x1, $x2) = unsafe { $interp.stack.pop2_unsafe() };
+    };
+    ($interp:expr, $x1:ident, $x2:ident, $x3:ident) => {
+        if $interp.stack.len() < 3 {
+            $interp.instruction_result = InstructionResult::StackUnderflow;
+            return ();
+        }
+        // SAFETY: Length is checked above.
+        let ($x1, $x2, $x3) = unsafe { $interp.stack.pop3_unsafe() };
+    };
+    ($interp:expr, $x1:ident, $x2:ident, $x3:ident, $x4:ident) => {
+        if $interp.stack.len() < 4 {
+            $interp.instruction_result = InstructionResult::StackUnderflow;
+            return ();
+        }
+        // SAFETY: Length is checked above.
+        let ($x1, $x2, $x3, $x4) = unsafe { $interp.stack.pop4_unsafe() };
+    };
+}
+```
+
+The `push!` and `push_b256` macro simply push a new word (`U256` or `B256`) into the stack. As previously explained, the reason behind its usage is the ability to set the interpreter's `InstructionResult::StackOverflow` and return in case of an error (which is not possible in the instruction function definition).
+```rs
+macro_rules! push {
+    ($interp:expr, $($x:expr),* $(,)?) => ($(
+        match $interp.stack.push($x) {
+            Ok(()) => {},
+            Err(e) => {
+                $interp.instruction_result = e;
+                return;
+            }
+        }
+    )*)
+}
+```
+
+The `memory_resize!` macro expands the memory if necessary. If the memory limit is reached, it will set the `InstructionResult::MemoryLimitOOG`. Additionally, it will calculate the extra gas of the memory expansion costs, which will be covered later on.
+
+```rs
+macro_rules! memory_resize {
+    ($interp:expr, $offset:expr, $len:expr) => {
+        memory_resize!($interp, $offset, $len, ())
+    };
+    ($interp:expr, $offset:expr, $len:expr, $ret:expr) => {
+        let size = $offset.saturating_add($len);
+        if size > $interp.memory.len() {
+            if $interp.memory.limit_reached(size) {
+                $interp.instruction_result = InstructionResult::MemoryLimitOOG;
+                return $ret;
+            }
+
+            // We are fine with saturating to usize if size is close to MAX value.
+            let rounded_size = crate::interpreter::next_multiple_of_32(size);
+
+            // Gas of memory expansion cost (not covered yet)
+            $interp.memory.resize(rounded_size);
+        }
+    };
+}
+```
+
+Finally, if the interpreter is supposed to be in view-only mode, the `check_staticcall!` macro will set the `InstructionResult::StateChangeDuringStaticCall` and return.
+
+```rs
+macro_rules! check_staticcall {
+    ($interp:expr) => {
+        if $interp.is_static {
+            $interp.instruction_result = InstructionResult::StateChangeDuringStaticCall;
+            return;
+        }
+    };
+}
+```
+
+#### Stack
+
 ---
 ---
