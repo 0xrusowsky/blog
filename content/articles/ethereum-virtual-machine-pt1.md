@@ -187,6 +187,12 @@ impl Memory {
     pub fn set_u256(&mut self, offset: usize, value: U256) {
         self.set(offset, &value.to_be_bytes::<32>());
     }
+
+    /// Sets the `byte` at the given `index`.
+    /// Panics on out of bounds.
+    pub fn set_byte(&mut self, offset: usize, byte: u8) {
+        self.set(offset, &[byte]);
+    }
 }
 ```
 Finally, as memory can be expanded up to a max capacity, the implementation should also have a method to resize its buffer. Note that expansion only impacts memory size, the underlying data of the expanded section remains empty -it is filled with zeros-.
