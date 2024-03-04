@@ -1,6 +1,6 @@
 ---
 title: "Ethereum Virtual Machine (in Rust) - Part 2"
-date: 2024-02-21T20:00:00+00:00
+date: 2024-03-04T16:00:00+00:00
 slug: revm-pt2
 category: article 
 summary: A closer look to the revm interpreter.
