@@ -6,8 +6,15 @@
     <description>Recent content in Articles on 0xrusowsky</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sun, 18 Feb 2024 20:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Mon, 04 Mar 2024 16:00:00 +0000</lastBuildDate>
     <atom:link href="https://0xrusowsky.github.io/blog/articles/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Ethereum Virtual Machine (in Rust) - Part 2</title>
+      <link>https://0xrusowsky.github.io/blog/articles/revm-pt2/</link>
+      <pubDate>Mon, 04 Mar 2024 16:00:00 +0000</pubDate>
+      <guid>https://0xrusowsky.github.io/blog/articles/revm-pt2/</guid>
+      <description>In this second article of the revm series, we will dive deeper into the EVM interpreter. We will understand how it works, especially focusing on the different opcodes.</description>
+    </item>
     <item>
       <title>Ethereum Virtual Machine (in Rust) - Part 1</title>
       <link>https://0xrusowsky.github.io/blog/articles/revm-pt1/</link>
