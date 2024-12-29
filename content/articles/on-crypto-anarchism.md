@@ -6,7 +6,7 @@ category: article
 summary: Why are we here in the first place?
 description: Brief history and reflections around the origin of the ethos of the blockchain space.
 cover:
-  image: /covers/anarchy.png
+  image: covers/anarchy.png
   alt:
   caption: 
   relative: true
@@ -130,5 +130,5 @@ If crypto-anarchists want to succeed, they need to ensure that the ethos of the 
 
 _“Anarchism is not a romantic fable but the hardheaded realization, based on five thousand years of experience, that we cannot entrust the management of our lives to kings, priests, politicians, generals, and county commissioners.”_
 
-_―  Edward Abbey _
+―  Edward Abbey
 

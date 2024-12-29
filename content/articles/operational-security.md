@@ -58,7 +58,7 @@ Of all the mentioned features, the most interesting is the multi-sig transaction
 
 Despite smart contract wallets requiring more effort when signing transactions (either a single user has to access multiple devices or multiple users have to coordinate), they are also extremely convenient in terms of account recovery. An N of M multi-sig setup with N < M grants the possibility to still access the wallet funds despite losing access to one of the private keys (in case of loss, damage, or hack of a guardian).
 
-{{< figure src="/images/opsec/eoa-vs-ms.jpg" align=center caption="_Comparison between EOAs (accounts controlled by regular wallets) and Smart Contract Wallets._" >}}
+{{< figure src="/blog/images/opsec/eoa-vs-ms.jpg" align=center caption="_Comparison between EOAs (accounts controlled by regular wallets) and Smart Contract Wallets._" >}}
 
 For example, a strong setup would be using a Gnosis Safe that required 2 signatures from the following 4 types of wallets:
 
@@ -90,7 +90,7 @@ Weak passwords are flawed due to a lack of randomness. For example, have you eve
 
 Although the typology of the characters increases the entropy of a password, the variable which has the biggest effect is the length. Therefore, you should move away from the old password standards and start prioritizing length over special characters. In summary, you should move away from passwords that are hard to remember for humans but easy to crack, and start embracing easy-to-remember passwords that are hard to crack.
 
-{{< figure src="/images/opsec/pwd.jpg" align=center caption="_Comic by xkcd.com_" >}}
+{{< figure src="/blog/images/opsec/pwd.jpg" align=center caption="_Comic by xkcd.com_" >}}
 
 If you want to be like the guy in the picture, I recommend using [diceware](https://www.diceware.net/) to create strong random passwords. By doing so, you’ll only have to remember a couple of words that will produce a high-entropy and secure password. On top of that, you can periodically add extra words as you are certain that you have already internalized your current words.
 
@@ -136,7 +136,7 @@ The first thing that you should worry about when dealing with emails, is which e
 
 I recommend using [Protonmail](https://protonmail.com), an open-source privacy-focused email service provider. Since the company is based in Switzerland, they don’t have to stick to EU/US laws and can implement end-to-end encryption.  E2EE is a communication system that prevents third parties from accessing the transferred data. It is capable of doing so by encrypting the messages with the receiver’s public key. This mechanism ensures that only the receiver will read the message’s content.
 
-{{< figure src="/images/opsec/proton-e2e.jpg" align=center caption="_Diagram of how Protonmail’s E2EE works._" >}}
+{{< figure src="/blog/images/opsec/proton-e2e.jpg" align=center caption="_Diagram of how Protonmail’s E2EE works._" >}}
 
 On top of that Protonmail is open-source, has a neat UX/UI, and a quite generous free tier service.
 
@@ -156,7 +156,7 @@ Email aliases are a special type of address that forward to your master accounts
 
 Although email aliases can't completely stop phishing attacks, they act as a proxy and, therefore, add an extra layer of security. Using email aliases gives you agency over the information that you give away, and protects your master email address from third parties. This is especially convenient against data leaks and also against companies that collect and/or sell your data.
 
-{{< figure src="/images/opsec/alias.jpg" align=center caption="_Diagram of how aliases work._" >}}
+{{< figure src="/blog/images/opsec/alias.jpg" align=center caption="_Diagram of how aliases work._" >}}
 
 Services such as SimpleLogin or AnonAddy are great open-source aliasing tools that easily help you deactivate compromised or perished aliases. They also offer additional features such as subdomains and even allow for multiple master emails. On top of that, SimpleLogon has been recently acquired by the privacy-focused Swish company Proton, which is always a reassurance of their great product.
 
